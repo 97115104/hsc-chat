@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HSC Chat</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/settings.css" />
+  <link rel="stylesheet" href="/css/chat.css" />
+  <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="chat-header">
+      <a href="/" class="brand">HSC Chat</a>
+      <div class="chat-header-actions">
+        <div id="conn-status" class="conn-dot"><span class="dot"></span><span class="label">checking…</span></div>
+        <div id="status">idle</div>
+      </div>
+    </header>
+
+    <div class="settings-wrap">
+      <button type="button" id="settings-toggle" class="settings-toggle">&#9654; API Settings</button>
+      <div id="settings-panel" class="settings-panel hidden">
+        <div class="form-group">
+          <label for="api-mode">API Provider</label>
+          <select id="api-mode">
+            <option value="puter">Puter GPT-OSS (Free, no key required)</option>
+            <option value="openrouter">OpenRouter (CORS-friendly, many models)</option>
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="openai">OpenAI</option>
+            <option value="google">Google Gemini</option>
+            <option value="ollama">Ollama (Local)</option>
+            <option value="custom" selected>Custom Endpoint</option>
+          </select>
+        </div>
+
+        <div id="puter-settings" class="provider-settings hidden">
+          <div class="form-group">
+            <label for="puter-model">Model</label>
+            <select id="puter-model">
+              <option value="openai/gpt-oss-120b">gpt-oss-120b (best quality)</option>
+              <option value="openai/gpt-oss-20b" selected>gpt-oss-20b (faster)</option>
+            </select>
+          </div>
+          <p class="settings-hint">Powered by Puter.com — free, no API key needed.</p>
+        </div>
+
+        <div id="ollama-settings" class="provider-settings hidden">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="ollama-url">Ollama URL</label>
+              <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434" />
+            </div>
+            <div class="form-group">
+              <label for="ollama-model">Model</label>
+              <input type="text" id="ollama-model" value="gpt-oss:20b" placeholder="gpt-oss:20b" />
+            </div>
+          </div>
+          <p class="settings-hint">Runs locally — no API key. Start with: OLLAMA_ORIGINS=* ollama serve</p>
+        </div>
+
+        <div id="keyed-settings" class="provider-settings">
+          <div class="form-group">
+            <label for="api-key">Chat API Key</label>
+            <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" />
+          </div>
+          <div id="base-url-group" class="form-group">
+            <label for="base-url">Base URL</label>
+            <input type="text" id="base-url" placeholder="https://your-endpoint.trycloudflare.com/v1" />
+          </div>
+          <div class="form-group">
+            <label for="model-name">Model</label>
+            <input type="text" id="model-name" value="default" placeholder="default" />
+          </div>
+          <div class="form-group">
+            <label for="system-prompt">System prompt</label>
+            <input type="text" id="system-prompt" value="You are a helpful assistant." />
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="save-key" checked />
+            <label for="save-key">Remember settings in this browser</label>
+          </div>
+          <p id="provider-hint" class="settings-hint">Enter any OpenAI-compatible endpoint URL.</p>
+        </div>
+
+        <hr class="settings-divider" />
+
+        <div class="form-group">
+          <label class="settings-section-label">Voice API</label>
+          <div class="form-group">
+            <label for="voice-api-key">Voice API Key</label>
+            <input type="password" id="voice-api-key" placeholder="sk-... (TTS scope)" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label for="voice-base-url">Voice Base URL</label>
+            <input type="text" id="voice-base-url" placeholder="https://api.example.com/v1" />
+          </div>
+          <p class="settings-hint">Separate from chat credentials. <code>/v1/tts/*</code> on this endpoint.</p>
+
+          <div class="checkbox-group voice-speak-row">
+            <input type="checkbox" id="cfg-voice" />
+            <label for="cfg-voice">Speak responses aloud</label>
+          </div>
+
+          <div class="voice-api-only hidden">
+            <div class="voice-picker-row">
+              <button type="button" id="voice-choose-btn" class="voice-choose-btn">choose voice…</button>
+              <button type="button" id="voice-test-btn" class="voice-rec-btn">test</button>
+              <button type="button" id="voice-clear-btn" class="voice-rec-btn voice-clear">clear</button>
+            </div>
+            <div id="voice-quick-pills" class="voice-quick-pills"></div>
+            <p class="settings-hint">Clone via voice API — browse, upload, or record a sample.</p>
+          </div>
+
+          <p class="settings-hint voice-system-only hidden">No voice API key — speak uses your computer's default system voice.</p>
+
+          <div class="voice-status-row">
+            <span id="cfg-voice-status" class="voice-status">checking voice…</span>
+          </div>
+          <p class="settings-hint voice-unavailable hidden">Voice unavailable in this browser.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-toolbar">
+      <label class="toggle">
+        <input id="web-search" type="checkbox" />
+        web search
+      </label>
+      <label id="speak-auto-label" class="toggle hidden" title="Automatically speak each response aloud">
+        <input type="checkbox" id="speak-auto-toggle" onchange="Voice.setVoiceEnabled(this.checked)" />
+        speak
+      </label>
+      <button type="button" id="clear-btn" class="btn-ghost">clear</button>
+    </div>
+
+    <section id="messages"></section>
+
+    <form id="chat-form" class="chat-form">
+      <textarea id="prompt" placeholder="Ask a question… (Enter to send, Shift+Enter for newline)" rows="3"></textarea>
+      <button type="submit" id="send-btn">send</button>
+      <button type="button" id="stop-btn" class="btn-stop hidden">stop</button>
+    </form>
+
+    <footer class="site-footer">
+      <span>HSC Chat — OpenAI-compatible chat</span>
+      <a href="https://attest.97115104.com/s/hsc-chat" target="_blank" rel="noopener noreferrer">
+        <span class="attest-star">✦</span> Built with Cursor Auto (Composer 2.5)
+      </a>
+    </footer>
+  </div>
+
+  <div id="voice-modal" class="voice-modal-backdrop">
+    <div class="voice-modal">
+      <div class="voice-modal-header">
+        <h2 id="voice-modal-title">Voices</h2>
+        <button type="button" id="voice-modal-close" class="voice-modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="voice-modal-tabs">
+        <button type="button" class="voice-modal-tab active" data-tab="browse">browse</button>
+        <button type="button" class="voice-modal-tab" data-tab="upload">upload</button>
+        <button type="button" class="voice-modal-tab" data-tab="record">record</button>
+      </div>
+      <div class="voice-modal-panel" data-panel="browse">
+        <input type="text" id="voice-search" class="voice-search" placeholder="search voices…" />
+        <div id="voice-grid" class="voice-grid"></div>
+      </div>
+      <div class="voice-modal-panel hidden" data-panel="upload">
+        <input id="upload-voice-name" type="text" placeholder="voice name (e.g. me)" class="voice-rec-name" />
+        <label class="voice-upload-btn">
+          choose audio file<input id="cfg-voice-file" type="file" accept="audio/wav,audio/*" class="hidden" onchange="Voice.loadVoiceRef(event)" />
+        </label>
+        <p id="voice-upload-status" class="voice-rec-hint">WAV or MP3, max 10 MB</p>
+      </div>
+      <div class="voice-modal-panel hidden" data-panel="record">
+        <input id="rec-voice-name" type="text" placeholder="voice name (e.g. me)" class="voice-rec-name" />
+        <div class="voice-rec-controls">
+          <button type="button" id="rec-start-btn" class="voice-rec-btn" onclick="Voice.startVoiceRecord()">record</button>
+          <button type="button" id="rec-stop-btn" class="voice-rec-btn voice-rec-stop hidden" onclick="Voice.stopVoiceRecord()">stop</button>
+          <span id="rec-dot" class="rec-dot"></span>
+          <span id="rec-timer" class="rec-timer"></span>
+        </div>
+        <p id="rec-status" class="voice-rec-hint">press record to capture a voice sample (5–30s recommended)</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+  <script src="/js/markdown.js"></script>
+  <script src="/js/apiClient.js"></script>
+  <script src="/js/voice.js"></script>
+  <script src="/js/settings.js"></script>
+  <script src="/js/chat.js"></script>
+  <script>
+    let config = Settings.init((data) => {
+      config = data;
+      Chat.checkConn(config);
+      Voice.onSettingsChange();
+    });
+    document.getElementById("cfg-voice")?.addEventListener("change", (e) => {
+      Voice.setVoiceEnabled(e.target.checked);
+    });
+    Chat.init(() => Settings.readForm(), config);
+    Voice.initUI(() => Settings.readForm());
+  </script>
+</body>
+</html>

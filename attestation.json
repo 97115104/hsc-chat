@@ -1,0 +1,19 @@
+{
+  "version": "2.0",
+  "id": "2026-06-25-hsc-chat",
+  "content_name": "HSC Chat",
+  "timestamp": "2026-06-25T00:00:00.000Z",
+  "platform": "attest.97115104.com",
+  "authorship_type": "collab",
+  "model": "cursor-auto-composer-2.5",
+  "role": "generated",
+  "document_type": "code",
+  "author": "97 115 104",
+  "description": "Docker-deployable OpenAI-compatible chat UI with multi-provider API settings and SSE streaming.",
+  "repository": "https://github.com/97115104/chat-openai-compatible",
+  "license": "MIT",
+  "signer": {
+    "name": "97 115 104",
+    "id": "97115104"
+  }
+}
