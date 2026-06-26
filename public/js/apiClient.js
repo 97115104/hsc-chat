@@ -92,9 +92,16 @@ const ApiClient = (() => {
   async function runWebSearch(query, signal, onReferences) {
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal });
-      if (!res.ok) return { used: false, systemExtra: "" };
-      const data = await res.json();
-      if (!data.results?.length) return { used: false, systemExtra: "" };
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data.error || `Search failed (HTTP ${res.status})`;
+        return { used: false, systemExtra: "", searchError: msg };
+      }
+
+      if (!data.results?.length) {
+        return { used: false, systemExtra: "", searchError: "No search results found" };
+      }
 
       const refs = data.results.map((r) => ({ title: r.title, url: r.url }));
       onReferences?.(refs);
@@ -107,9 +114,16 @@ const ApiClient = (() => {
         "\n\n---\nWeb search results (use these to inform your answer; cite sources when relevant):\n\n" +
         block;
 
-      return { used: true, systemExtra };
-    } catch {
-      return { used: false, systemExtra: "" };
+      return {
+        used: true,
+        systemExtra,
+        searchSourceCount: data.results.length,
+        searchCached: !!data.cached,
+      };
+    } catch (err) {
+      if (err?.name === "AbortError") throw err;
+      const msg = err instanceof Error ? err.message : "Web search unavailable";
+      return { used: false, systemExtra: "", searchError: msg };
     }
   }
 
@@ -117,6 +131,9 @@ const ApiClient = (() => {
     const { onDelta, onReferences, signal } = callbacks;
     let usedWebSearch = false;
     let systemExtra = "";
+    let searchError = null;
+    let searchSourceCount = 0;
+    let searchCached = false;
 
     if (config.webSearch) {
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -124,23 +141,28 @@ const ApiClient = (() => {
         const search = await runWebSearch(lastUser.content, signal, onReferences);
         usedWebSearch = search.used;
         systemExtra = search.systemExtra;
+        searchError = search.searchError ?? null;
+        searchSourceCount = search.searchSourceCount ?? 0;
+        searchCached = !!search.searchCached;
       }
     }
+
+    const searchMeta = { usedWebSearch, searchError, searchSourceCount, searchCached };
 
     const system = (config.systemPrompt || "You are a helpful assistant.") + systemExtra;
     const model = resolveModel(config);
 
     if (config.apiMode === "puter") {
       const result = await streamPuter(config, system, messages, onDelta, signal);
-      return { ...result, usedWebSearch };
+      return { ...result, ...searchMeta };
     }
     if (config.apiMode === "anthropic") {
       const result = await streamAnthropic(config, system, messages, onDelta, signal);
-      return { ...result, usedWebSearch };
+      return { ...result, ...searchMeta };
     }
     if (config.apiMode === "google") {
       const result = await streamGoogle(config, system, messages, onDelta, signal);
-      return { ...result, usedWebSearch };
+      return { ...result, ...searchMeta };
     }
 
     const base = resolveBase(config);
@@ -190,7 +212,7 @@ const ApiClient = (() => {
       usedWebSearch = true;
     }
     await parseOpenAiSse(res, onDelta, onReferences);
-    return { usedWebSearch };
+    return searchMeta;
   }
 
   async function streamPuter(config, system, messages, onDelta, signal) {

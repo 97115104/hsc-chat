@@ -17,7 +17,8 @@ services:
       start_period: 10s
 
   searxng:
-    image: searxng/searxng:latest
+    # Pin digest to avoid JSON serialization regressions in floating :latest
+    image: searxng/searxng@sha256:77b6ec55d5176fc47cfe91df5e182393133305358741d0c80ebbeec75ac39f99
     container_name: hsc-searxng
     restart: unless-stopped
     volumes:
@@ -58,6 +59,11 @@ services:
       - PUBLIC_DIR=/app/public
       - DATABASE_URL=postgres://hsc:hsc@postgres:5432/hsc_chat
       - SEARXNG_URL=http://searxng:8080
+      - SEARCH_LIMIT=5
+      - EXTRACT_LIMIT=3
+      - EXTRACT_TIMEOUT_MS=5000
+      - SEARCH_CACHE_TTL_MS=300000
+      - SEARCH_SNIPPET_ONLY=false
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 10s

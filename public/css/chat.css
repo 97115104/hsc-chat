@@ -8,9 +8,14 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   background: #000;
   color: #ddd;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -18,11 +23,14 @@ body {
 
 .app-shell {
   width: min(960px, 100%);
-  min-height: 100vh;
+  height: 100%;
+  height: 100dvh;
+  min-height: 0;
   margin: 0 auto;
   padding: 20px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -115,10 +123,12 @@ body {
 
 #messages {
   flex: 1;
-  min-height: 260px;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid #101010;
   padding: 16px;
+  overscroll-behavior: contain;
 }
 
 .msg {
@@ -306,25 +316,75 @@ body {
   gap: 10px;
   margin-top: 12px;
   flex-shrink: 0;
-  align-items: end;
+  align-items: stretch;
 }
 
 .chat-form-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 108px;
+  height: 92px;
+  box-sizing: border-box;
+}
+
+.chat-form-actions button {
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0 12px;
+}
+
+.btn-dictate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.dictate-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.dictate-wave {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.btn-dictate.listening .dictate-wave {
+  opacity: 0.85;
+}
+
+.btn-dictate.listening {
+  color: #ff6b6b !important;
+  border-color: rgba(255, 107, 107, 0.65) !important;
+  animation: dictate-pulse 1s ease-in-out infinite;
+}
+
+.btn-dictate.listening:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.15) !important;
+  color: #ff6b6b !important;
+}
+
+.btn-dictate.unsupported {
+  display: none;
+}
+
+@keyframes dictate-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 .chat-form .btn-new-chat {
   background: transparent;
   color: #888;
   border: 1px solid #333;
-  padding: 0 16px;
+  padding: 0 10px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
-  min-height: 38px;
 }
 
 .chat-form .btn-new-chat:hover:not(:disabled) {
@@ -341,7 +401,9 @@ body {
 .chat-form textarea {
   resize: vertical;
   min-height: 92px;
+  height: 92px;
   width: 100%;
+  box-sizing: border-box;
   background: #000;
   color: #ddd;
   border: 1px solid #242424;
@@ -357,11 +419,10 @@ body {
   background: #000;
   color: var(--lime);
   border: 1px solid var(--lime);
-  padding: 0 22px;
   font-weight: 700;
   cursor: pointer;
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .chat-form button:not(.btn-new-chat):hover:not(:disabled) {
@@ -598,7 +659,7 @@ body {
     flex-direction: row;
     flex-wrap: wrap;
     min-width: 0;
+    height: auto;
   }
-  .chat-form-actions button { flex: 1; min-width: 100px; }
-  .chat-form button { min-height: 46px; }
+  .chat-form-actions button { flex: 1; min-width: 100px; min-height: 46px; }
 }

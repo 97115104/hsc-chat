@@ -8,6 +8,8 @@ const Chat = (() => {
   let _historyChats = [];
 
   const els = {};
+  const SCROLL_THRESHOLD = 80;
+  let autoScroll = true;
 
   function cacheElements() {
     els.messages = document.getElementById("messages");
@@ -18,6 +20,7 @@ const Chat = (() => {
     els.stopBtn = document.getElementById("stop-btn");
     els.clearBtn = document.getElementById("clear-btn");
     els.newChatBtn = document.getElementById("new-chat-btn");
+    els.dictateBtn = document.getElementById("dictate-btn");
     els.historyBtn = document.getElementById("history-btn");
     els.conn = document.getElementById("conn-status");
   }
@@ -31,8 +34,19 @@ const Chat = (() => {
     els.conn.querySelector(".label").textContent = label;
   }
 
-  function scrollBottom() {
+  function isNearBottom() {
+    const el = els.messages;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_THRESHOLD;
+  }
+
+  function scrollToBottom({ force = false } = {}) {
+    if (force) autoScroll = true;
+    if (!autoScroll) return;
     els.messages.scrollTop = els.messages.scrollHeight;
+  }
+
+  function onMessagesScroll() {
+    autoScroll = isNearBottom();
   }
 
   function renderEmpty() {
@@ -78,7 +92,7 @@ const Chat = (() => {
     }
 
     els.messages.appendChild(wrap);
-    scrollBottom();
+    scrollToBottom({ force: role === "user" });
     if (role === "assistant" && text) {
       wrap.dataset.text = text;
       Voice.attachSpeakButton(wrap, text);
@@ -101,6 +115,8 @@ const Chat = (() => {
     els.prompt.disabled = active;
     els.sendBtn.classList.toggle("hidden", active);
     els.stopBtn.classList.toggle("hidden", !active);
+    if (els.dictateBtn) els.dictateBtn.disabled = active;
+    SpeechInput.syncDisabled();
   }
 
   function appendCursor(body) {
@@ -140,7 +156,9 @@ const Chat = (() => {
       return;
     }
 
+    SpeechInput.stop();
     els.prompt.value = "";
+    autoScroll = true;
     history.push({ role: "user", content: text });
     addMessage("user", text, null, config);
     await persistMessage("user", text);
@@ -169,7 +187,7 @@ const Chat = (() => {
             answer += delta;
             Markdown.setBody(assistantBody, answer, { streaming: true });
             appendCursor(assistantBody);
-            scrollBottom();
+            scrollToBottom();
           },
           onReferences(r) {
             refs = r;
@@ -203,7 +221,11 @@ const Chat = (() => {
         wrap.appendChild(list);
       }
 
-      setStatus(result?.usedWebSearch ? "search used" : "done");
+      setStatus(result?.usedWebSearch ? `search ready (${result.searchSourceCount} sources)` : "done");
+
+      if (result?.searchError && document.getElementById("web-search")?.checked) {
+        addMessage("error", `Web search unavailable — ${result.searchError}. Answer may be outdated.`);
+      }
 
       if (Voice.isVoiceEnabled() && assistantWrap && answer) {
         Voice.speakMessage(assistantWrap);
@@ -228,7 +250,7 @@ const Chat = (() => {
       activeBodyEl = null;
       abortCtrl = null;
       setStreamingUi(false);
-      scrollBottom();
+      scrollToBottom();
     }
   }
 
@@ -238,6 +260,7 @@ const Chat = (() => {
 
   async function newChat() {
     if (streaming) stop();
+    SpeechInput.stop();
     Voice.stopSpeaking();
     try {
       const chat = await ChatStore.createChat();
@@ -255,6 +278,7 @@ const Chat = (() => {
 
   async function clear() {
     if (streaming) stop();
+    SpeechInput.stop();
     Voice.stopSpeaking();
     history.length = 0;
     els.messages.innerHTML = "";
@@ -295,7 +319,7 @@ const Chat = (() => {
     }
 
     if (!chat.messages?.length) renderEmpty();
-    scrollBottom();
+    scrollToBottom({ force: true });
   }
 
   function renderHistoryList(filter = "") {
@@ -361,6 +385,7 @@ const Chat = (() => {
       return;
     }
     if (streaming) stop();
+    SpeechInput.stop();
     Voice.stopSpeaking();
 
     try {
@@ -387,6 +412,8 @@ const Chat = (() => {
   }
 
   function bind(getConfig) {
+    els.messages.addEventListener("scroll", onMessagesScroll, { passive: true });
+
     els.form.addEventListener("submit", (e) => {
       e.preventDefault();
       send(getConfig());
@@ -425,6 +452,12 @@ const Chat = (() => {
     _getConfig = getConfig || (() => ({}));
     cacheElements();
     bind(getConfig);
+    SpeechInput.init({
+      promptEl: els.prompt,
+      buttonEl: els.dictateBtn,
+      getDisabled: () => streaming,
+      onStatus: setStatus,
+    });
     await loadCurrentChat(getConfig);
     checkConn(initialConfig);
   }

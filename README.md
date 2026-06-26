@@ -20,7 +20,9 @@ This starts **hsc-chat** (UI + API), **hsc-postgres** (chat history), and **hsc-
 
 ## Web search
 
-When **web search** is enabled in the toolbar, HSC Chat queries the bundled **SearXNG** container (`GET /api/search?q=…`), injects the top results into the system prompt, and shows source links under the reply. Works with any chat provider — no special API support required.
+When **web search** is enabled in the toolbar, HSC Chat queries the bundled **SearXNG** container (`GET /api/search?q=…`), fetches and extracts content from the top results in parallel, injects them into the system prompt, and shows source links under the reply. Works with any chat provider — no special API support required.
+
+Pipeline: **query shaping** → **SearXNG metasearch** → **parallel page extraction** (Mozilla Readability) → **prompt injection**. Repeat queries are served from an in-memory cache.
 
 ## Features
 
@@ -97,7 +99,11 @@ Preset voices use the name as `model` (e.g. `fry`). Uploaded voices use their `i
 | `PUBLIC_DIR` | `/app/public` | Static files directory inside the container |
 | `DATABASE_URL` | `postgres://hsc:hsc@postgres:5432/hsc_chat` | PostgreSQL connection string (set automatically in `docker-compose.yml`) |
 | `SEARXNG_URL` | `http://searxng:8080` | SearXNG instance for web search (set automatically in `docker-compose.yml`) |
-| `SEARCH_LIMIT` | `8` | Max search results injected per message |
+| `SEARCH_LIMIT` | `5` | Max SearXNG results per query |
+| `EXTRACT_LIMIT` | `3` | Top URLs to fetch and extract in parallel |
+| `EXTRACT_TIMEOUT_MS` | `5000` | Per-URL extraction timeout (ms) |
+| `SEARCH_CACHE_TTL_MS` | `300000` | In-memory search cache TTL (ms) |
+| `SEARCH_SNIPPET_ONLY` | `false` | Skip page extraction for lowest latency (snippets only) |
 
 Chat messages are stored in PostgreSQL (`hsc_pg_data` Docker volume). Use **new chat** or **⌘N** to start a fresh conversation.
 

@@ -136,6 +136,7 @@ start_docker() {
   cd "$SCRIPT_DIR"
 
   log "Image steps: node:22-alpine -> npm install -> tsc -> copy public/ -> expose :8080"
+  compose_verbose "Pulling SearXNG image..." pull searxng
   compose_verbose "Pulling base image..." pull hsc-chat
   compose_verbose "Building hsc-chat..." build --pull hsc-chat
   compose_verbose "Starting container..." up -d --remove-orphans hsc-chat

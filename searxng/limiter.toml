@@ -1,0 +1,4 @@
+# Minimal limiter config (limiter disabled in settings.yml; silences startup warnings)
+
+[botdetection.ip_limit]
+link_token = false

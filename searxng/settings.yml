@@ -13,3 +13,17 @@ search:
 server:
   secret_key: "hsc-chat-local-searxng-key"
   limiter: false
+  bind_address: "0.0.0.0"
+  image_proxy: false
+
+outgoing:
+  enable_http: true
+  request_timeout: 8.0
+  max_request_timeout: 15.0
+
+# Brave/Startpage frequently CAPTCHA or rate-limit automated local instances.
+engines:
+  - name: brave
+    disabled: true
+  - name: startpage
+    disabled: true

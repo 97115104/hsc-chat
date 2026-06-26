@@ -13,8 +13,8 @@ app.get("/search", async (c) => {
   if (!q) return c.json({ error: "Query parameter q is required" }, 400);
 
   try {
-    const results = await searchWeb(q);
-    return c.json({ ok: true, query: q, results });
+    const data = await searchWeb(q);
+    return c.json({ ok: true, ...data });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message, ok: false }, 502);
