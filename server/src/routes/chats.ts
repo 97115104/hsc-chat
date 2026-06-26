@@ -19,6 +19,7 @@ app.get("/chats", async (c) => {
       title: chat.title,
       createdAt: chat.created_at,
       updatedAt: chat.updated_at,
+      messageCount: chat.message_count,
     })),
   });
 });

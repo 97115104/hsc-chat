@@ -4,6 +4,8 @@ const Chat = (() => {
   let abortCtrl = null;
   let activeBodyEl = null;
   let currentChatId = null;
+  let _getConfig = () => ({});
+  let _historyChats = [];
 
   const els = {};
 
@@ -16,6 +18,7 @@ const Chat = (() => {
     els.stopBtn = document.getElementById("stop-btn");
     els.clearBtn = document.getElementById("clear-btn");
     els.newChatBtn = document.getElementById("new-chat-btn");
+    els.historyBtn = document.getElementById("history-btn");
     els.conn = document.getElementById("conn-status");
   }
 
@@ -155,6 +158,7 @@ const Chat = (() => {
     let refs = [];
 
     try {
+      if (document.getElementById("web-search")?.checked) setStatus("searching…");
       const result = await ApiClient.streamChat(
         { ...config, webSearch: document.getElementById("web-search")?.checked },
         history,
@@ -265,21 +269,116 @@ const Chat = (() => {
     }
   }
 
+  function formatHistoryDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) {
+      return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function displayChat(chat, getConfig) {
+    currentChatId = chat.id;
+    ChatStore.setCurrentChatId(chat.id);
+    history.length = 0;
+    els.messages.innerHTML = "";
+
+    for (const m of chat.messages || []) {
+      if (m.role === "user" || m.role === "assistant") {
+        history.push({ role: m.role, content: m.content });
+      }
+      addMessage(m.role, m.content, m.refs, getConfig());
+    }
+
+    if (!chat.messages?.length) renderEmpty();
+    scrollBottom();
+  }
+
+  function renderHistoryList(filter = "") {
+    const list = document.getElementById("history-list");
+    if (!list) return;
+
+    const q = filter.trim().toLowerCase();
+    const chats = q
+      ? _historyChats.filter((c) => {
+          const title = (c.title || "untitled chat").toLowerCase();
+          return title.includes(q) || c.id.toLowerCase().includes(q);
+        })
+      : _historyChats;
+
+    list.innerHTML = "";
+    if (!chats.length) {
+      list.innerHTML = '<p class="history-empty">No saved chats yet.</p>';
+      return;
+    }
+
+    chats.forEach((chat) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "history-item" + (chat.id === currentChatId ? " active" : "");
+      const title = document.createElement("span");
+      title.className = "history-item-title";
+      title.textContent = chat.title?.trim() || "Untitled chat";
+      const meta = document.createElement("span");
+      meta.className = "history-item-meta";
+      const count = chat.messageCount ?? 0;
+      meta.textContent = `${count} message${count === 1 ? "" : "s"} · ${formatHistoryDate(chat.updatedAt)}`;
+      btn.append(title, meta);
+      btn.onclick = () => switchToChat(chat.id);
+      list.appendChild(btn);
+    });
+  }
+
+  async function openHistory() {
+    const modal = document.getElementById("history-modal");
+    const search = document.getElementById("history-search");
+    if (!modal) return;
+
+    try {
+      const data = await ChatStore.listChats();
+      _historyChats = data.chats || [];
+      if (search) search.value = "";
+      renderHistoryList();
+      modal.classList.add("open");
+      search?.focus();
+    } catch (err) {
+      setStatus("error");
+      addMessage("error", `Could not load history: ${err.message}`);
+    }
+  }
+
+  function closeHistory() {
+    document.getElementById("history-modal")?.classList.remove("open");
+  }
+
+  async function switchToChat(id) {
+    if (!id || id === currentChatId) {
+      closeHistory();
+      return;
+    }
+    if (streaming) stop();
+    Voice.stopSpeaking();
+
+    try {
+      const chat = await ChatStore.loadChat(id);
+      displayChat(chat, _getConfig);
+      setStatus("idle");
+      closeHistory();
+      els.prompt.focus();
+    } catch (err) {
+      setStatus("error");
+      addMessage("error", `Could not load chat: ${err.message}`);
+    }
+  }
+
   async function loadCurrentChat(getConfig) {
     try {
       const chat = await ChatStore.ensureChat();
-      currentChatId = chat.id;
-      history.length = 0;
-      els.messages.innerHTML = "";
-
-      for (const m of chat.messages || []) {
-        if (m.role === "user" || m.role === "assistant") {
-          history.push({ role: m.role, content: m.content });
-        }
-        addMessage(m.role, m.content, m.refs, getConfig());
-      }
-
-      if (!chat.messages?.length) renderEmpty();
+      displayChat(chat, getConfig);
     } catch (err) {
       renderEmpty();
       setStatus("db error");
@@ -303,8 +402,18 @@ const Chat = (() => {
     els.stopBtn.addEventListener("click", stop);
     els.clearBtn.addEventListener("click", clear);
     els.newChatBtn?.addEventListener("click", newChat);
+    els.historyBtn?.addEventListener("click", openHistory);
+
+    document.getElementById("history-modal-close")?.addEventListener("click", closeHistory);
+    document.getElementById("history-modal")?.addEventListener("click", (e) => {
+      if (e.target?.id === "history-modal") closeHistory();
+    });
+    document.getElementById("history-search")?.addEventListener("input", (e) => {
+      renderHistoryList(e.target.value);
+    });
 
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeHistory();
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
         e.preventDefault();
         newChat();
@@ -313,13 +422,14 @@ const Chat = (() => {
   }
 
   async function init(getConfig, initialConfig) {
+    _getConfig = getConfig || (() => ({}));
     cacheElements();
     bind(getConfig);
     await loadCurrentChat(getConfig);
     checkConn(initialConfig);
   }
 
-  return { init, checkConn, newChat };
+  return { init, checkConn, newChat, openHistory };
 })();
 
 window.Chat = Chat;

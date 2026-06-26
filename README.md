@@ -16,7 +16,11 @@ Or manually:
 docker compose up --build
 ```
 
-This starts **hsc-chat** (UI + API) and **hsc-postgres** (persistent chat history).
+This starts **hsc-chat** (UI + API), **hsc-postgres** (chat history), and **hsc-searxng** (web search).
+
+## Web search
+
+When **web search** is enabled in the toolbar, HSC Chat queries the bundled **SearXNG** container (`GET /api/search?q=…`), injects the top results into the system prompt, and shows source links under the reply. Works with any chat provider — no special API support required.
 
 ## Features
 
@@ -24,10 +28,10 @@ This starts **hsc-chat** (UI + API) and **hsc-postgres** (persistent chat histor
 - Token-by-token SSE streaming with blinking cursor
 - Full API provider dropdown with browser-persisted settings
 - Built-in CORS proxy for Custom Endpoint and Ollama (inside the container)
-- Web search toggle (for APIs that support it, e.g. 429 Inference)
+- Web search via **SearXNG** (Docker) — injects live results into the prompt for any provider
 - **Voice**: separate voice API key — API clone when configured, otherwise browser system voice when speak is on
 - Markdown rendering for assistant replies
-- **Chat history** stored in PostgreSQL (persists across restarts)
+- **Chat history** stored in PostgreSQL — **history** button to browse and resume past chats
 - **New chat** button and **⌘N** / **Ctrl+N** shortcut
 - Source reference display, stop generation, clear conversation
 
@@ -92,6 +96,8 @@ Preset voices use the name as `model` (e.g. `fry`). Uploaded voices use their `i
 | `PORT` | `8080` | Port inside the container |
 | `PUBLIC_DIR` | `/app/public` | Static files directory inside the container |
 | `DATABASE_URL` | `postgres://hsc:hsc@postgres:5432/hsc_chat` | PostgreSQL connection string (set automatically in `docker-compose.yml`) |
+| `SEARXNG_URL` | `http://searxng:8080` | SearXNG instance for web search (set automatically in `docker-compose.yml`) |
+| `SEARCH_LIMIT` | `8` | Max search results injected per message |
 
 Chat messages are stored in PostgreSQL (`hsc_pg_data` Docker volume). Use **new chat** or **⌘N** to start a fresh conversation.
 

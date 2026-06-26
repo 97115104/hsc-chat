@@ -89,19 +89,58 @@ const ApiClient = (() => {
     }
   }
 
+  async function runWebSearch(query, signal, onReferences) {
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal });
+      if (!res.ok) return { used: false, systemExtra: "" };
+      const data = await res.json();
+      if (!data.results?.length) return { used: false, systemExtra: "" };
+
+      const refs = data.results.map((r) => ({ title: r.title, url: r.url }));
+      onReferences?.(refs);
+
+      const block = data.results
+        .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content || ""}`.trim())
+        .join("\n\n");
+
+      const systemExtra =
+        "\n\n---\nWeb search results (use these to inform your answer; cite sources when relevant):\n\n" +
+        block;
+
+      return { used: true, systemExtra };
+    } catch {
+      return { used: false, systemExtra: "" };
+    }
+  }
+
   async function streamChat(config, messages, callbacks) {
     const { onDelta, onReferences, signal } = callbacks;
-    const system = config.systemPrompt || "You are a helpful assistant.";
+    let usedWebSearch = false;
+    let systemExtra = "";
+
+    if (config.webSearch) {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      if (lastUser?.content) {
+        const search = await runWebSearch(lastUser.content, signal, onReferences);
+        usedWebSearch = search.used;
+        systemExtra = search.systemExtra;
+      }
+    }
+
+    const system = (config.systemPrompt || "You are a helpful assistant.") + systemExtra;
     const model = resolveModel(config);
 
     if (config.apiMode === "puter") {
-      return streamPuter(config, system, messages, onDelta, signal);
+      const result = await streamPuter(config, system, messages, onDelta, signal);
+      return { ...result, usedWebSearch };
     }
     if (config.apiMode === "anthropic") {
-      return streamAnthropic(config, system, messages, onDelta, signal);
+      const result = await streamAnthropic(config, system, messages, onDelta, signal);
+      return { ...result, usedWebSearch };
     }
     if (config.apiMode === "google") {
-      return streamGoogle(config, system, messages, onDelta, signal);
+      const result = await streamGoogle(config, system, messages, onDelta, signal);
+      return { ...result, usedWebSearch };
     }
 
     const base = resolveBase(config);
@@ -116,7 +155,6 @@ const ApiClient = (() => {
       stream: true,
       max_tokens: config.maxTokens || 2048,
     };
-    if (config.webSearch) body.web_search = true;
 
     const headers = { "Content-Type": "application/json" };
     let url;
@@ -148,7 +186,9 @@ const ApiClient = (() => {
       throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
     }
 
-    const usedWebSearch = res.headers.get("x-429-web-search") === "1";
+    if (!usedWebSearch && res.headers.get("x-429-web-search") === "1") {
+      usedWebSearch = true;
+    }
     await parseOpenAiSse(res, onDelta, onReferences);
     return { usedWebSearch };
   }

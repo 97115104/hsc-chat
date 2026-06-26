@@ -1,0 +1,15 @@
+use_default_settings: true
+
+general:
+  instance_name: "HSC Search"
+
+search:
+  safe_search: 0
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "hsc-chat-local-searxng-key"
+  limiter: false

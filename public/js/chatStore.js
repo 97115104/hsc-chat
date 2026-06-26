@@ -46,6 +46,10 @@ const ChatStore = (() => {
     return request(`/api/chats/${chatId}/messages`, { method: "DELETE" });
   }
 
+  async function listChats() {
+    return request("/api/chats");
+  }
+
   async function ensureChat() {
     const existingId = getCurrentChatId();
     if (existingId) {
@@ -65,6 +69,7 @@ const ChatStore = (() => {
     setCurrentChatId,
     createChat,
     loadChat,
+    listChats,
     saveMessage,
     clearMessages,
     ensureChat,

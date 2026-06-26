@@ -7,6 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkDb, initDb } from "./db.js";
 import { chatRoutes } from "./routes/chats.js";
+import { searchRoutes } from "./routes/search.js";
+import { checkSearch } from "./search.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = process.env.PUBLIC_DIR ?? path.resolve(__dirname, "../../public");
@@ -24,11 +26,12 @@ app.use(
 );
 
 app.get("/health", async (c) => {
-  const db = await checkDb();
-  return c.json({ ok: db, service: "hsc-chat", db });
+  const [db, search] = await Promise.all([checkDb(), checkSearch()]);
+  return c.json({ ok: db && search, service: "hsc-chat", db, search });
 });
 
 app.route("/api", chatRoutes);
+app.route("/api", searchRoutes);
 
 app.all("/proxy/*", async (c) => {
   const baseUrl = c.req.header("X-API-Base-URL")?.trim();

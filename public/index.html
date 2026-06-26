@@ -124,7 +124,7 @@
     </div>
 
     <div class="chat-toolbar">
-      <label class="toggle">
+      <label class="toggle" title="Search the web via SearXNG, then inject results into the prompt">
         <input id="web-search" type="checkbox" />
         web search
       </label>
@@ -132,6 +132,7 @@
         <input type="checkbox" id="speak-auto-toggle" onchange="Voice.setVoiceEnabled(this.checked)" />
         speak
       </label>
+      <button type="button" id="history-btn" class="btn-ghost">history</button>
       <button type="button" id="clear-btn" class="btn-ghost">clear</button>
     </div>
 
@@ -152,6 +153,19 @@
         <span class="attest-star">✦</span> Built with Cursor Auto (Composer 2.5)
       </a>
     </footer>
+  </div>
+
+  <div id="history-modal" class="history-modal-backdrop">
+    <div class="history-modal">
+      <div class="history-modal-header">
+        <h2>Chat history</h2>
+        <button type="button" id="history-modal-close" class="history-modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="history-modal-body">
+        <input type="text" id="history-search" class="history-search" placeholder="search chats…" />
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </div>
   </div>
 
   <div id="voice-modal" class="voice-modal-backdrop">

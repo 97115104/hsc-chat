@@ -171,7 +171,7 @@ print_summary() {
   printf "\n"
   printf "  ${GRY}Everything runs in the hsc-chat container.${R}\n"
   printf "  ${GRY}Open API Settings — paste chat + voice credentials.${R}\n"
-  printf "  ${GRY}Chat history is stored in PostgreSQL. New chat: button or ⌘N.${R}\n"
+  printf "  ${GRY}Chat history in PostgreSQL. Web search via SearXNG.${R}\n"
   printf "  ${GRY}Logs: docker compose logs -f hsc-chat${R}\n"
   printf "  ${GRY}Stop: docker compose down${R}\n"
   printf "\n"; hr

@@ -462,6 +462,135 @@ body {
   font-size: 10px;
 }
 
+/* Chat history modal */
+.history-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.history-modal-backdrop.open {
+  display: flex;
+}
+
+.history-modal {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  border: 1px solid #242424;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+.history-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #181818;
+}
+
+.history-modal-header h2 {
+  margin: 0;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: normal;
+  color: var(--lime);
+  text-transform: lowercase;
+}
+
+.history-modal-close {
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #555;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.history-modal-close:hover { color: var(--lime); }
+
+.history-modal-body {
+  padding: 14px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.history-search {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #000;
+  border: 1px solid #242424;
+  color: #ddd;
+  font: inherit;
+  font-size: 13px;
+}
+
+.history-search:focus {
+  outline: none;
+  border-color: var(--lime);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid #1a1a1a;
+  color: #ccc;
+  font: inherit;
+  cursor: pointer;
+}
+
+.history-item:hover {
+  border-color: rgba(204, 255, 0, 0.25);
+  color: #fff;
+}
+
+.history-item.active {
+  border-color: rgba(204, 255, 0, 0.45);
+  background: rgba(204, 255, 0, 0.04);
+}
+
+.history-item-title {
+  display: block;
+  font-size: 13px;
+  color: #eee;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-meta {
+  display: block;
+  font-size: 11px;
+  color: #555;
+}
+
+.history-empty {
+  text-align: center;
+  color: #444;
+  font-size: 12px;
+  padding: 24px 12px;
+}
+
 @media (max-width: 700px) {
   .app-shell { padding: 14px; }
   .chat-form { grid-template-columns: 1fr; }

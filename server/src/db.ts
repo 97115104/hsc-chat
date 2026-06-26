@@ -78,11 +78,18 @@ export type MessageRow = {
   created_at: Date;
 };
 
-export async function listChats(limit = 50) {
-  const { rows } = await pool.query<ChatRow>(
-    `SELECT id, title, created_at, updated_at
-     FROM chats
-     ORDER BY updated_at DESC
+export type ChatListRow = ChatRow & {
+  message_count: number;
+};
+
+export async function listChats(limit = 100) {
+  const { rows } = await pool.query<ChatListRow>(
+    `SELECT c.id, c.title, c.created_at, c.updated_at,
+            COUNT(m.id)::int AS message_count
+     FROM chats c
+     LEFT JOIN messages m ON m.chat_id = c.id
+     GROUP BY c.id
+     ORDER BY c.updated_at DESC
      LIMIT $1`,
     [limit],
   );
