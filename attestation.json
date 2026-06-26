@@ -9,7 +9,7 @@
   "role": "generated",
   "document_type": "code",
   "author": "97 115 104",
-  "description": "Docker-deployable OpenAI-compatible chat UI with multi-provider API settings and SSE streaming.",
+  "description": "Docker-deployable OpenAI-compatible chat UI with multi-provider API settings, SSE streaming, PostgreSQL chat history, SearXNG web search, and voice clone support.",
   "repository": "https://github.com/97115104/chat-openai-compatible",
   "license": "MIT",
   "signer": {

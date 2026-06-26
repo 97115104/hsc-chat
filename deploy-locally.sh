@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # HSC Chat — deploy-locally.sh
-# Runs entirely in Docker: UI + CORS proxy in one container.
+# Runs the full Docker stack: hsc-chat, postgres, searxng.
 #
 # Usage:
 #   bash deploy-locally.sh
@@ -170,7 +170,7 @@ print_summary() {
   printf "  ${B}UI${R}      ->  ${CYN}http://localhost:$WEB_PORT${R}\n"
   printf "  ${B}Health${R}  ->  ${CYN}http://localhost:$WEB_PORT/health${R}\n"
   printf "\n"
-  printf "  ${GRY}Everything runs in the hsc-chat container.${R}\n"
+  printf "  ${GRY}Stack: hsc-chat (UI + API), hsc-postgres, hsc-searxng.${R}\n"
   printf "  ${GRY}Open API Settings — paste chat + voice credentials.${R}\n"
   printf "  ${GRY}Chat history in PostgreSQL. Web search via SearXNG.${R}\n"
   printf "  ${GRY}Logs: docker compose logs -f hsc-chat${R}\n"

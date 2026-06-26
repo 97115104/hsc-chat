@@ -1,6 +1,6 @@
 # HSC Chat
 
-OpenAI-compatible chat UI in Docker — a lightweight wrapper for your chat and voice API keys. The UI, CORS proxy, and **PostgreSQL chat history** run in Docker.
+OpenAI-compatible chat UI in Docker — a lightweight wrapper for your chat and voice API keys. The UI and API server run in **hsc-chat**; **PostgreSQL** stores chat history; **SearXNG** powers web search.
 
 ```bash
 git clone https://github.com/97115104/chat-openai-compatible.git
@@ -16,7 +16,9 @@ Or manually:
 docker compose up --build
 ```
 
-This starts **hsc-chat** (UI + API), **hsc-postgres** (chat history), and **hsc-searxng** (web search).
+This starts **hsc-chat** (UI + API + CORS proxy), **hsc-postgres** (chat history), and **hsc-searxng** (web search).
+
+Health check: **http://localhost:8080/health** — returns `{ ok, db, search }` when Postgres and SearXNG are reachable.
 
 ## Web search
 
@@ -26,14 +28,15 @@ Pipeline: **query shaping** → **SearXNG metasearch** → **parallel page extra
 
 ## Features
 
-- Dark terminal chat UI (429 Inference Network design)
+- Dark terminal chat UI (lime-on-black monospace design)
 - Token-by-token SSE streaming with blinking cursor
 - Full API provider dropdown with browser-persisted settings
-- Built-in CORS proxy for Custom Endpoint and Ollama (inside the container)
+- Built-in CORS proxy for Custom Endpoint and Ollama (inside the hsc-chat container)
 - Web search via **SearXNG** (Docker) — injects live results into the prompt for any provider
 - **Voice**: separate voice API key — API clone when configured, otherwise browser system voice when speak is on
+- **Dictate** — browser speech recognition for voice input (microphone button)
 - Markdown rendering for assistant replies
-- **Chat history** stored in PostgreSQL — **history** button to browse and resume past chats
+- **Chat history** stored in PostgreSQL — **history** button to browse, search, and resume past chats
 - **New chat** button and **⌘N** / **Ctrl+N** shortcut
 - Source reference display, stop generation, clear conversation
 
@@ -92,13 +95,15 @@ Preset voices use the name as `model` (e.g. `fry`). Uploaded voices use their `i
 
 ## Environment
 
+Set these on the **hsc-chat** service (defaults in `docker-compose.yml`). Override at runtime with shell env vars, e.g. `SEARCH_LIMIT=10 docker compose up --build`.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `WEB_PORT` | `8080` | Host port mapped to the container (`deploy-locally.sh`, `docker compose`) |
 | `PORT` | `8080` | Port inside the container |
 | `PUBLIC_DIR` | `/app/public` | Static files directory inside the container |
-| `DATABASE_URL` | `postgres://hsc:hsc@postgres:5432/hsc_chat` | PostgreSQL connection string (set automatically in `docker-compose.yml`) |
-| `SEARXNG_URL` | `http://searxng:8080` | SearXNG instance for web search (set automatically in `docker-compose.yml`) |
+| `DATABASE_URL` | `postgres://hsc:hsc@postgres:5432/hsc_chat` | PostgreSQL connection string |
+| `SEARXNG_URL` | `http://searxng:8080` | SearXNG instance for web search |
 | `SEARCH_LIMIT` | `5` | Max SearXNG results per query |
 | `EXTRACT_LIMIT` | `3` | Top URLs to fetch and extract in parallel |
 | `EXTRACT_TIMEOUT_MS` | `5000` | Per-URL extraction timeout (ms) |
