@@ -309,9 +309,33 @@ body {
   align-items: end;
 }
 
+.chat-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 108px;
+}
+
+.chat-form .btn-new-chat {
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 38px;
+}
+
+.chat-form .btn-new-chat:hover:not(:disabled) {
+  background: #000;
+  color: var(--lime);
+  border-color: rgba(204, 255, 0, 0.55);
+}
+
 .chat-form .btn-stop {
-  grid-column: 2;
-  grid-row: 1;
+  grid-column: unset;
+  grid-row: unset;
 }
 
 .chat-form textarea {
@@ -340,7 +364,7 @@ body {
   font-size: 16px;
 }
 
-.chat-form button:hover:not(:disabled) {
+.chat-form button:not(.btn-new-chat):hover:not(:disabled) {
   background: var(--lime);
   color: #000;
 }
@@ -441,5 +465,11 @@ body {
 @media (max-width: 700px) {
   .app-shell { padding: 14px; }
   .chat-form { grid-template-columns: 1fr; }
+  .chat-form-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .chat-form-actions button { flex: 1; min-width: 100px; }
   .chat-form button { min-height: 46px; }
 }

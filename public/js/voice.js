@@ -194,7 +194,7 @@ const Voice = (() => {
     list.forEach((v) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "voice-grid-item" + (_selected?.voiceId === v.voiceId ? " active" : "");
+      btn.className = "voice-grid-item" + ((_selected?.voiceId === v.voiceId || _selected?.name === v.name) ? " active" : "");
       btn.innerHTML = `<span class="voice-grid-name">${v.name}</span>`;
       btn.onclick = () => selectVoice(v);
       grid.appendChild(btn);
@@ -411,10 +411,17 @@ const Voice = (() => {
           const evtLine = buf.slice(0, nlnl).trim();
           buf = buf.slice(nlnl + 2);
           if (!evtLine.startsWith("data:")) continue;
+          const payload = evtLine.slice(5).trim();
+          if (!payload || payload === "[DONE]") {
+            if (payload === "[DONE]") break outer;
+            continue;
+          }
           let evt;
-          try { evt = JSON.parse(evtLine.slice(5).trim()); } catch { continue; }
+          try { evt = JSON.parse(payload); } catch { continue; }
           if (evt.done) break outer;
-          const wavBuf = Uint8Array.from(atob(evt.audio), (ch) => ch.charCodeAt(0)).buffer;
+          const audioB64 = evt.audio || evt.data;
+          if (!audioB64) continue;
+          const wavBuf = Uint8Array.from(atob(audioB64), (ch) => ch.charCodeAt(0)).buffer;
           const audioBuf = await audioCtx.decodeAudioData(wavBuf);
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuf;
@@ -455,7 +462,8 @@ const Voice = (() => {
   }
 
   async function streamApiTTS(text, msgEl) {
-    if (!_selected?.voiceId) return false;
+    const model = _selected?.voiceId || _selected?.name;
+    if (!model) return false;
 
     const abortCtrl = new AbortController();
     ttsAbortController = abortCtrl;
@@ -467,7 +475,7 @@ const Voice = (() => {
     try {
       res = await ApiClient.streamTtsApi(
         config,
-        { text, voice_id: _selected.voiceId },
+        { model, input: text, stream: true },
         abortCtrl.signal,
       );
     } catch (err) {

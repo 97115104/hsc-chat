@@ -5,6 +5,8 @@ import { cors } from "hono/cors";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkDb, initDb } from "./db.js";
+import { chatRoutes } from "./routes/chats.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = process.env.PUBLIC_DIR ?? path.resolve(__dirname, "../../public");
@@ -12,9 +14,21 @@ const port = Number(process.env.PORT ?? 8080);
 
 const app = new Hono();
 
-app.use("*", cors({ origin: "*", allowHeaders: ["*"], allowMethods: ["GET", "POST", "OPTIONS"] }));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowHeaders: ["*"],
+    allowMethods: ["GET", "POST", "DELETE", "PATCH", "OPTIONS"],
+  }),
+);
 
-app.get("/health", (c) => c.json({ ok: true, service: "hsc-chat" }));
+app.get("/health", async (c) => {
+  const db = await checkDb();
+  return c.json({ ok: db, service: "hsc-chat", db });
+});
+
+app.route("/api", chatRoutes);
 
 app.all("/proxy/*", async (c) => {
   const baseUrl = c.req.header("X-API-Base-URL")?.trim();
@@ -22,12 +36,11 @@ app.all("/proxy/*", async (c) => {
 
   const suffix = c.req.path.replace(/^\/proxy/, "");
   const base = baseUrl.replace(/\/+$/, "");
-  // Base URL usually includes /v1; avoid .../v1/v1/... when the proxy path also has /v1
-  const path =
+  const pathSuffix =
     base.endsWith("/v1") && (suffix === "/v1" || suffix.startsWith("/v1/"))
       ? suffix.replace(/^\/v1/, "") || "/"
       : suffix;
-  const target = `${base}${path}`;
+  const target = `${base}${pathSuffix}`;
 
   const headers = new Headers();
   const auth = c.req.header("Authorization");
@@ -63,6 +76,8 @@ app.get("/", (c) => {
   const html = readFileSync(path.join(publicDir, "index.html"), "utf8");
   return c.html(html);
 });
+
+await initDb();
 
 console.log(`[hsc-chat] listening on http://0.0.0.0:${port}`);
 serve({ fetch: app.fetch, port });

@@ -94,9 +94,9 @@
           </div>
           <div class="form-group">
             <label for="voice-base-url">Voice Base URL</label>
-            <input type="text" id="voice-base-url" placeholder="https://api.example.com/v1" />
+            <input type="text" id="voice-base-url" placeholder="https://your-voice-api.trycloudflare.com/v1" />
           </div>
-          <p class="settings-hint">Separate from chat credentials. <code>/v1/tts/*</code> on this endpoint.</p>
+          <p class="settings-hint">Separate from chat. OpenAI-compatible voice clone: <code>/v1/voices</code>, <code>/v1/audio/speech</code>.</p>
 
           <div class="checkbox-group voice-speak-row">
             <input type="checkbox" id="cfg-voice" />
@@ -139,8 +139,11 @@
 
     <form id="chat-form" class="chat-form">
       <textarea id="prompt" placeholder="Ask a question… (Enter to send, Shift+Enter for newline)" rows="3"></textarea>
-      <button type="submit" id="send-btn">send</button>
-      <button type="button" id="stop-btn" class="btn-stop hidden">stop</button>
+      <div class="chat-form-actions">
+        <button type="button" id="new-chat-btn" class="btn-new-chat" title="New chat (⌘N)">new chat</button>
+        <button type="submit" id="send-btn">send</button>
+        <button type="button" id="stop-btn" class="btn-stop hidden">stop</button>
+      </div>
     </form>
 
     <footer class="site-footer">
@@ -192,6 +195,7 @@
   <script src="/js/apiClient.js"></script>
   <script src="/js/voice.js"></script>
   <script src="/js/settings.js"></script>
+  <script src="/js/chatStore.js"></script>
   <script src="/js/chat.js"></script>
   <script>
     let config = Settings.init((data) => {

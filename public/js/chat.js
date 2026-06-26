@@ -3,6 +3,7 @@ const Chat = (() => {
   let streaming = false;
   let abortCtrl = null;
   let activeBodyEl = null;
+  let currentChatId = null;
 
   const els = {};
 
@@ -14,6 +15,7 @@ const Chat = (() => {
     els.sendBtn = document.getElementById("send-btn");
     els.stopBtn = document.getElementById("stop-btn");
     els.clearBtn = document.getElementById("clear-btn");
+    els.newChatBtn = document.getElementById("new-chat-btn");
     els.conn = document.getElementById("conn-status");
   }
 
@@ -75,9 +77,20 @@ const Chat = (() => {
     els.messages.appendChild(wrap);
     scrollBottom();
     if (role === "assistant" && text) {
+      wrap.dataset.text = text;
       Voice.attachSpeakButton(wrap, text);
     }
     return body;
+  }
+
+  async function persistMessage(role, content, refs) {
+    if (!currentChatId) return;
+    try {
+      await ChatStore.saveMessage(currentChatId, role, content, refs);
+    } catch (err) {
+      console.error("Failed to save message:", err);
+      setStatus("save error");
+    }
   }
 
   function setStreamingUi(active) {
@@ -127,6 +140,7 @@ const Chat = (() => {
     els.prompt.value = "";
     history.push({ role: "user", content: text });
     addMessage("user", text, null, config);
+    await persistMessage("user", text);
 
     const assistantBody = addMessage("assistant", "", null, config);
     const assistantWrap = assistantBody.closest(".msg");
@@ -168,6 +182,7 @@ const Chat = (() => {
           Voice.attachSpeakButton(assistantWrap, answer);
         }
       }
+      await persistMessage("assistant", answer, refs);
 
       if (refs.length) {
         const wrap = assistantBody.closest(".msg");
@@ -192,12 +207,17 @@ const Chat = (() => {
     } catch (err) {
       if (cursor.parentNode) cursor.remove();
       if (err.name === "AbortError") {
-        if (answer) history.push({ role: "assistant", content: answer });
+        if (answer) {
+          history.push({ role: "assistant", content: answer });
+          await persistMessage("assistant", answer, refs);
+        }
         Markdown.setBody(assistantBody, answer || "(stopped)");
         setStatus("idle");
       } else {
         assistantBody.closest(".msg")?.remove();
-        addMessage("error", err.message || String(err));
+        const errText = err.message || String(err);
+        addMessage("error", errText);
+        await persistMessage("error", errText);
         setStatus("error");
       }
     } finally {
@@ -212,13 +232,59 @@ const Chat = (() => {
     abortCtrl?.abort();
   }
 
-  function clear() {
+  async function newChat() {
+    if (streaming) stop();
+    Voice.stopSpeaking();
+    try {
+      const chat = await ChatStore.createChat();
+      currentChatId = chat.id;
+      history.length = 0;
+      els.messages.innerHTML = "";
+      renderEmpty();
+      setStatus("idle");
+      els.prompt.focus();
+    } catch (err) {
+      setStatus("error");
+      addMessage("error", `Could not start new chat: ${err.message}`);
+    }
+  }
+
+  async function clear() {
     if (streaming) stop();
     Voice.stopSpeaking();
     history.length = 0;
     els.messages.innerHTML = "";
     renderEmpty();
     setStatus("idle");
+    if (currentChatId) {
+      try {
+        await ChatStore.clearMessages(currentChatId);
+      } catch (err) {
+        console.error("Failed to clear messages:", err);
+      }
+    }
+  }
+
+  async function loadCurrentChat(getConfig) {
+    try {
+      const chat = await ChatStore.ensureChat();
+      currentChatId = chat.id;
+      history.length = 0;
+      els.messages.innerHTML = "";
+
+      for (const m of chat.messages || []) {
+        if (m.role === "user" || m.role === "assistant") {
+          history.push({ role: m.role, content: m.content });
+        }
+        addMessage(m.role, m.content, m.refs, getConfig());
+      }
+
+      if (!chat.messages?.length) renderEmpty();
+    } catch (err) {
+      renderEmpty();
+      setStatus("db error");
+      addMessage("error", `Chat history unavailable: ${err.message}`);
+    }
   }
 
   function bind(getConfig) {
@@ -236,16 +302,24 @@ const Chat = (() => {
 
     els.stopBtn.addEventListener("click", stop);
     els.clearBtn.addEventListener("click", clear);
+    els.newChatBtn?.addEventListener("click", newChat);
+
+    document.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        newChat();
+      }
+    });
   }
 
-  function init(getConfig, initialConfig) {
+  async function init(getConfig, initialConfig) {
     cacheElements();
-    renderEmpty();
     bind(getConfig);
+    await loadCurrentChat(getConfig);
     checkConn(initialConfig);
   }
 
-  return { init, checkConn };
+  return { init, checkConn, newChat };
 })();
 
 window.Chat = Chat;

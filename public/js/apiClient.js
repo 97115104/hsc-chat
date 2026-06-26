@@ -354,44 +354,60 @@ const ApiClient = (() => {
     return headers;
   }
 
-  function ttsUrl(config, path) {
-    const base = voiceBaseUrl(config);
-    if (!base) return null;
-    return `/proxy/tts${path}`;
+  function voiceProxyUrl(config, path) {
+    if (!voiceBaseUrl(config)) return null;
+    return `/proxy${path}`;
+  }
+
+  function normalizeVoiceItem(v) {
+    const id = v.id || v.voice_id || v.name;
+    const name = v.name || v.id || id;
+    return {
+      name,
+      voiceId: id,
+      source: v.source === "preset" ? "preset" : "api",
+    };
   }
 
   async function checkTtsHealth(config) {
-    const url = ttsUrl(config, "/health");
-    if (!url || !config.voiceApiKey) return { available: false };
-    try {
-      const res = await fetch(url, { headers: ttsHeaders(config) });
-      if (!res.ok) return { available: false };
-      const data = await res.json();
-      return { available: data.available === true || data.status === "ok" };
-    } catch {
-      return { available: false };
+    if (!config.voiceApiKey || !voiceBaseUrl(config)) return { available: false };
+    const urls = [voiceProxyUrl(config, "/voices"), voiceProxyUrl(config, "/models")];
+    for (const url of urls) {
+      if (!url) continue;
+      try {
+        const res = await fetch(url, { headers: ttsHeaders(config) });
+        if (res.ok) return { available: true };
+      } catch { /* try next */ }
     }
+    return { available: false };
   }
 
   async function listTtsVoices(config) {
-    const url = ttsUrl(config, "/voices");
-    if (!url || !config.voiceApiKey) return [];
-    try {
-      const res = await fetch(url, { headers: ttsHeaders(config) });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.voices || []).map((v) => ({
-        name: v.name || v.voice_id,
-        voiceId: v.voice_id,
-        source: "api",
-      }));
-    } catch {
-      return [];
+    if (!config.voiceApiKey || !voiceBaseUrl(config)) return [];
+    const urls = [voiceProxyUrl(config, "/voices"), voiceProxyUrl(config, "/models")];
+    for (const url of urls) {
+      if (!url) continue;
+      try {
+        const res = await fetch(url, { headers: ttsHeaders(config) });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const items = data.data || data.voices || [];
+        if (!items.length) continue;
+        const seen = new Set();
+        return items
+          .map(normalizeVoiceItem)
+          .filter((v) => {
+            if (!v.voiceId || seen.has(v.voiceId)) return false;
+            seen.add(v.voiceId);
+            return true;
+          });
+      } catch { /* try next */ }
     }
+    return [];
   }
 
   async function uploadTtsVoice(config, name, voiceDataUrl) {
-    const url = ttsUrl(config, "/voices");
+    const url = voiceProxyUrl(config, "/voices");
     if (!url || !config.voiceApiKey) return null;
     const res = await fetch(url, {
       method: "POST",
@@ -400,15 +416,16 @@ const ApiClient = (() => {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Upload failed (${res.status})`);
+      throw new Error(err.error?.message || err.error || err.detail || `Upload failed (${res.status})`);
     }
     const data = await res.json();
-    return { name: data.name || name, voiceId: data.voice_id, source: "api" };
+    const voiceId = data.id || data.voice_id || data.name || name;
+    return { name: data.name || name, voiceId, source: "api" };
   }
 
   async function streamTtsApi(config, body, signal) {
-    const url = ttsUrl(config, "/stream");
-    if (!url) throw new Error("TTS API URL not configured");
+    const url = voiceProxyUrl(config, "/audio/speech");
+    if (!url) throw new Error("Voice API URL not configured");
     return fetch(url, {
       method: "POST",
       headers: ttsHeaders(config),
@@ -428,7 +445,7 @@ const ApiClient = (() => {
     listTtsVoices,
     uploadTtsVoice,
     streamTtsApi,
-    ttsUrl,
+    voiceProxyUrl,
     hasVoiceApi,
     voiceBaseUrl,
   };

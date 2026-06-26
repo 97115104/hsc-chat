@@ -1,16 +1,40 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hsc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hsc
+      POSTGRES_PASSWORD: hsc
+      POSTGRES_DB: hsc_chat
+    volumes:
+      - hsc_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hsc -d hsc_chat"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   hsc-chat:
     build: .
     container_name: hsc-chat
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${WEB_PORT:-8080}:8080"
     environment:
       - PORT=8080
       - PUBLIC_DIR=/app/public
+      - DATABASE_URL=postgres://hsc:hsc@postgres:5432/hsc_chat
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 15s
+      start_period: 20s
+
+volumes:
+  hsc_pg_data:

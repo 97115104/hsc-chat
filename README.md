@@ -1,6 +1,6 @@
 # HSC Chat
 
-OpenAI-compatible chat UI in Docker — a lightweight wrapper for your chat and voice API keys. The entire app (UI + CORS proxy) runs in one container.
+OpenAI-compatible chat UI in Docker — a lightweight wrapper for your chat and voice API keys. The UI, CORS proxy, and **PostgreSQL chat history** run in Docker.
 
 ```bash
 git clone https://github.com/97115104/chat-openai-compatible.git
@@ -16,6 +16,8 @@ Or manually:
 docker compose up --build
 ```
 
+This starts **hsc-chat** (UI + API) and **hsc-postgres** (persistent chat history).
+
 ## Features
 
 - Dark terminal chat UI (429 Inference Network design)
@@ -24,7 +26,9 @@ docker compose up --build
 - Built-in CORS proxy for Custom Endpoint and Ollama (inside the container)
 - Web search toggle (for APIs that support it, e.g. 429 Inference)
 - **Voice**: separate voice API key — API clone when configured, otherwise browser system voice when speak is on
-- Upload/record voice samples to your API (`POST /v1/tts/voices`)
+- Markdown rendering for assistant replies
+- **Chat history** stored in PostgreSQL (persists across restarts)
+- **New chat** button and **⌘N** / **Ctrl+N** shortcut
 - Source reference display, stop generation, clear conversation
 
 ## Custom Endpoint (vLLM, Cloudflare tunnel, etc.)
@@ -49,14 +53,24 @@ Chat and voice use **separate credentials** in API Settings:
 | Field | Purpose |
 |-------|---------|
 | **Chat API Key** + **Base URL** | Chat completions (`/v1/chat/completions`) |
-| **Voice API Key** + **Voice Base URL** | Voice clone TTS (`/v1/tts/*`) |
+| **Voice API Key** + **Voice Base URL** | Voice clone (`/v1/voices`, `/v1/audio/speech`) |
 
 | Mode | When |
 |------|------|
-| **API clone** | Voice API key + base URL set, and `GET /v1/tts/health` succeeds |
+| **API clone** | Voice API key + base URL set (includes `/v1`), and voice list endpoint responds |
 | **System default** | No voice API key — when **Speak responses aloud** is on, uses browser `speechSynthesis` |
 
-1. Enter **Voice API Key** and **Voice Base URL** for cloned voices (optional)
+**Voice Clone API** (OpenAI-compatible, use `/v1` not `/api`):
+
+| Action | Endpoint |
+|--------|----------|
+| List voices | `GET /v1/voices` or `GET /v1/models` |
+| Stream speech | `POST /v1/audio/speech` with `{"model":"fry","input":"…","stream":true}` |
+| Upload voice | `POST /v1/voices` |
+
+Preset voices use the name as `model` (e.g. `fry`). Uploaded voices use their `id` (e.g. `voice-a1b2c3d4e5f6`).
+
+1. Enter **Voice API Key** (`sk-voice-…`) and **Voice Base URL** (e.g. `https://…trycloudflare.com/v1`)
 2. Check **Speak responses aloud** or use the toolbar **speak** toggle
 3. With voice API: click **choose voice…** to browse, upload, or record
 4. Without voice API key: speak uses your computer's built-in voice automatically
@@ -77,6 +91,9 @@ Chat and voice use **separate credentials** in API Settings:
 | `WEB_PORT` | `8080` | Host port mapped to the container (`deploy-locally.sh`, `docker compose`) |
 | `PORT` | `8080` | Port inside the container |
 | `PUBLIC_DIR` | `/app/public` | Static files directory inside the container |
+| `DATABASE_URL` | `postgres://hsc:hsc@postgres:5432/hsc_chat` | PostgreSQL connection string (set automatically in `docker-compose.yml`) |
+
+Chat messages are stored in PostgreSQL (`hsc_pg_data` Docker volume). Use **new chat** or **⌘N** to start a fresh conversation.
 
 ## License
 
