@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: hsc-postgres
-    restart: unless-stopped
+    restart: no
     environment:
       POSTGRES_USER: hsc
       POSTGRES_PASSWORD: hsc
@@ -20,7 +20,7 @@ services:
     # Pin digest to avoid JSON serialization regressions in floating :latest
     image: searxng/searxng@sha256:77b6ec55d5176fc47cfe91df5e182393133305358741d0c80ebbeec75ac39f99
     container_name: hsc-searxng
-    restart: unless-stopped
+    restart: no
     volumes:
       - ./searxng:/etc/searxng:rw
     environment:
@@ -46,7 +46,7 @@ services:
   hsc-chat:
     build: .
     container_name: hsc-chat
-    restart: unless-stopped
+    restart: no
     depends_on:
       postgres:
         condition: service_healthy
